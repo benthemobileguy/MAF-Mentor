@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "995551005984",
+    "firebase_url": "https://mafmentor-d933a.firebaseio.com",
+    "project_id": "mafmentor-d933a",
+    "storage_bucket": "mafmentor-d933a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:995551005984:android:8ec60807ee1ea6787adb45",
+        "android_client_info": {
+          "package_name": "com.bnotion.ben.maf_mentor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "995551005984-22b7hptalqjrpiiul5g3ekjl1pg98lbi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCugHi_2IR6YD5CBSa7KSnSTtRxjh3KEhU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "995551005984-22b7hptalqjrpiiul5g3ekjl1pg98lbi.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "995551005984-2nk3h3h3iukhctj3178o7fjdquatuvpr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bnotion.ben.mafMentor"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

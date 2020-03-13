@@ -78,20 +78,24 @@ class User {
         country = json['country'],
         gender = json['gender'],
         phone = json['phone'],
-        degree = json['education']['degree'],
-        linkedin = json['employment']['linkedin'],
-        institution = json['education']['institution'],
-        position = json['employment']['position'],
+        degree = getFromList(json['education'], 'degree'),
+        linkedin = getFromList(json['employment'], 'linkedin'),
+        institution = getFromList(json['education'], 'institution'),
+        position = getFromList(json['employment'], 'position'),
         isAdmin = json['isAdmin'],
         profile_image = json['profile_image'],
         created_at = json['created_at'],
         updated_at = json['updated_at'],
         category = json['category'],
         industry = json['industry'],
-        company = json['employment']['company'],
+        company = getFromList(json['employment'], 'company'),
         bio_interest = json['bio_interest'],
         fav_quote = json['fav_quote'],
         current_job = json['current_job'],
         state_of_origin = json['state_of_origin'],
         id = json['id'];
+}
+
+String getFromList(Map<String, dynamic> json, String key) {
+  return json != null ? json[key] : "";
 }

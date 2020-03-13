@@ -145,7 +145,11 @@ class _UploadPicState extends State<UploadPicPage> {
                 fit: BoxFit.fill,
               )
                   : Image.network(
-                "https://images.unsplash.com/photo-1502164980785-f8aa41d53611?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=500&q=60",
+                widget.profile_image == "noimage.jpg"
+                    ? AuthUtils.defaultProfileImg
+                    : NetworkUtils.host +
+                    AuthUtils.profilePics +
+                    widget.profile_image,
                 fit: BoxFit.fill,
               ),
             ),
@@ -285,63 +289,59 @@ class _UploadPicState extends State<UploadPicPage> {
   }
 
   void finshUpdate() async{
-    if(_image!=null){
-      setState(() {
-        _isLoading = true;
-      });
-      SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-      var uri = NetworkUtils.host +
-          AuthUtils.endPointUpdateProfile;
-      Map<String, String> data = {
-        "_method": "PATCH",
-        "first_name": widget.first_name,
-        "last_name": widget.last_name,
-        "phone": widget.phone,
-        "industry":widget.industry,
-        "country": widget.country,
-        "state": widget.state,
-        "fav_quote": widget.fav_quote,
-        "bio_interest": widget.bio_text,
-        "terms": "1",
-        "company": widget.company,
-        "position": widget.job_position,
-        "linked_in":widget.linkedin_profile,
-        "institution": widget.institution,
-        "degree": widget.degree,
-        "preference[0]": widget.industry};
-      String authToken = sharedPreferences.getString("token");
-      try {
-        final response = await http.post(
-          uri,
-          body: json.decode(json.encode(data)),
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': 'Bearer ' + authToken,
-          },
-        );
+    setState(() {
+      _isLoading = true;
+    });
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var uri = NetworkUtils.host +
+        AuthUtils.endPointUpdateProfile;
+    Map<String, String> data = {
+      "_method": "PATCH",
+      "first_name": widget.first_name,
+      "last_name": widget.last_name,
+      "phone": widget.phone,
+      "industry":widget.industry,
+      "country": widget.country,
+      "state": widget.state,
+      "fav_quote": widget.fav_quote,
+      "bio_interest": widget.bio_text,
+      "terms": "1",
+      "company": widget.company,
+      "position": widget.job_position,
+      "linked_in":widget.linkedin_profile,
+      "institution": widget.institution,
+      "degree": widget.degree,
+      "preference[0]": widget.industry};
+    String authToken = sharedPreferences.getString("token");
+    try {
+      final response = await http.post(
+        uri,
+        body: json.decode(json.encode(data)),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ' + authToken,
+        },
+      );
 
-        final responseJson = json.decode(response.body);
-        print(responseJson.toString());
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          setState(() {
-            _isRegComplete = true;
-          });
-        } else{
-          setState(() {
-            _isLoading = false;
-          });
-          NetworkUtils.showSnackBar(_scaffoldKey, 'An error occurred. Please try again');
-        }
-        return responseJson;
-      } catch (exception) {
-        print(exception.toString());
+      final responseJson = json.decode(response.body);
+      print(responseJson.toString());
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        setState(() {
+          _isRegComplete = true;
+        });
+      } else{
         setState(() {
           _isLoading = false;
         });
         NetworkUtils.showSnackBar(_scaffoldKey, 'An error occurred. Please try again');
       }
-    } else{
-      NetworkUtils.showSnackBar(_scaffoldKey, "Please select a profile image");
+      return responseJson;
+    } catch (exception) {
+      print(exception.toString());
+      setState(() {
+        _isLoading = false;
+      });
+      NetworkUtils.showSnackBar(_scaffoldKey, 'An error occurred. Please try again');
     }
   }
 

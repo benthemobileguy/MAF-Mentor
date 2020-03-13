@@ -86,6 +86,8 @@ flutter:
     - assets/images/search.png
     - assets/images/send.png
     - assets/images/smile.png
+    - assets/images/dashboard_arrow.png
+    - assets/images/congratsImg.png
   fonts:
     - family: Gilroy
       fonts:
@@ -110,3 +112,11 @@ flutter:
     - family: MuliLight
       fonts:
        - asset: assets/fonts/Muli_Light.ttf
+
+    - family: OpenSansBold
+      fonts:
+       - asset: assets/fonts/OpenSans_Bold.ttf
+
+    - family: OpenSansItalic
+      fonts:
+       - asset: assets/fonts/OpenSans_Italic.ttf

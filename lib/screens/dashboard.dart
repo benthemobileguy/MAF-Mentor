@@ -148,25 +148,39 @@ class _DashBoardPageState extends State<DashBoardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              RaisedButton(
-                child: new Text(
-                  "Thank you for signing up! Please complete your profile from here in order to use the platform",
-                  style: new TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontSize: 14,
-                      fontFamily: 'Muli'
+              Row(
+                children: <Widget>[
+                  Center(
+                    child: new Image.asset(
+                      'assets/images/dashboard_arrow.png',
+                      width: 25.0,
+                      height: 25.0,
+                    ),
                   ),
-                ),
-                padding: const EdgeInsets.only(
-                    left: 10.0, right: 10.0, top: 10.0, bottom: 10.0),
-                textColor: Color(0xffffffff),
-                color: Color(0xFFCB4250),
-                onPressed: () => Navigator.push(context, SlideFromRightPageRoute(widget: ProfileUpdatePage(first_name: _firstName,
-                    last_name: _lastName,
-                    country:_nationality,
-                    phone_number:_phone_number,
-                    email: _email,
-                    profile_image: _profile_image))),
+                  Expanded(
+                    child: FlatButton(
+                      child: new Text(
+                        "Welcome aboard, " + _firstName + ". Let's get to know you, "
+                            "complete your profile here to use our platform.",
+                        style: new TextStyle(
+                            color: Color(0xFFCB4250 ),
+                            fontSize: 14,
+                            fontFamily: 'Muli'
+                        ),
+                      ),
+                      padding: const EdgeInsets.only(
+                          left: 10.0, right: 10.0, top: 10.0, bottom: 10.0),
+                      textColor: Color(0xFFCB4250),
+                      color: Color(0xFFFFFFFF),
+                      onPressed: () => Navigator.push(context, SlideFromRightPageRoute(widget: ProfileUpdatePage(first_name: _firstName,
+                          last_name: _lastName,
+                          country:_nationality,
+                          phone_number:_phone_number,
+                          email: _email,
+                          profile_image: _profile_image))),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(
                 height: 20.0,
@@ -489,12 +503,10 @@ class _DashBoardPageState extends State<DashBoardPage> {
   Future checkUpdateProfile() async{
     if(_fav_quote == null || _industry == null || _bio_interest == null|| _fav_quote == "" || _industry == "" || _bio_interest == ""){
       setState(() {
-        showTabs = false;
         isUpdateProfile = false;
       });
     } else{
       setState(() {
-        showTabs = true;
         isUpdateProfile = true;
       });
     }

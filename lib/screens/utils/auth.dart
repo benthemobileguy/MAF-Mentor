@@ -7,6 +7,7 @@ class AuthUtils {
   Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   static final String defaultProfileImg = "https://images.unsplash.com/photo-1502164980785-f8aa41d53611?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=500&q=60";
   static final String profilePics = '/profile_image/';
+  static final String latestSchedule = "/api/v1/schedule/latest";
   static final String postSchedule = "/api/v1/schedule/create";
   static final String endPointIndex = '/api/v1/mentoring-board/';
   static final String endPoint = '/api/v1/register';

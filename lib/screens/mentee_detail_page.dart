@@ -186,7 +186,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
       Expanded(
         child: RaisedButton(
             child: new Text(
-              "New Schedule",
+              "Start Schedule",
               style: new TextStyle(
                   color: Colors.white,
                   fontFamily: 'Muli'

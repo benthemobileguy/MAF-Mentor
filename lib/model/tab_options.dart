@@ -8,8 +8,7 @@ class Choice {
 }
 const List<Choice> choices = <Choice>[
   Choice(title: 'Conversation', icon: Icons.comment),
-  Choice(title: 'Schedule', icon: Icons.schedule),
-  Choice(title: 'Connections', icon: Icons.person),];
+  Choice(title: 'Schedule', icon: Icons.schedule),];
 class ChoicePage extends StatelessWidget {
   const ChoicePage({Key key, this.choice}) : super(key: key);
   final Choice choice;

@@ -225,13 +225,13 @@ class _DashBoardPageState extends State<DashBoardPage> {
         showTabs = true;
         _appBarText = "Welcome, " + _firstName;
         return TabBarView(
-            children: [new HomePage(), new SchedulePage(), MenteePage(menteeIds: newList,
-                indexIds: indexIds, names:names, sessionStatus: status, mentorId:id)]);
+            children: [new HomePage(), new SchedulePage()]);
         break;
       case 1:
         showTabs = false;
         _appBarText = "Mentoring Board";
-        return MentoringBoardPage();
+        return MenteePage(menteeIds: newList,
+            indexIds: indexIds, names:names, sessionStatus: status, mentorId:id);
         break;
       case 2:
         showTabs = false;

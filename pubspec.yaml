@@ -88,6 +88,8 @@ flutter:
     - assets/images/smile.png
     - assets/images/dashboard_arrow.png
     - assets/images/congratsImg.png
+    - assets/images/tick.png
+    - assets/images/circle.png
   fonts:
     - family: Gilroy
       fonts:

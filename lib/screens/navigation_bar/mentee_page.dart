@@ -15,7 +15,14 @@ class MenteePage extends StatefulWidget {
   final Iterable sessionStatus;
   final String names;
   var mentorId;
-  MenteePage({Key key, this.menteeIds, this.indexIds, this.sessionStatus, this.names, this.mentorId}) : super(key: key);
+  MenteePage(
+      {Key key,
+      this.menteeIds,
+      this.indexIds,
+      this.sessionStatus,
+      this.names,
+      this.mentorId})
+      : super(key: key);
 
   @override
   _MenteePageState createState() => _MenteePageState();
@@ -28,7 +35,7 @@ class _MenteePageState extends State<MenteePage> {
   void initState() {
     // TODO: implement initState
     super.initState();
-   _future =  _updateListOfMentees(widget.menteeIds);
+    _future = _updateListOfMentees(widget.menteeIds);
   }
 
   @override
@@ -46,20 +53,13 @@ class _MenteePageState extends State<MenteePage> {
         ),
       ),
     );
-    final bottomText = Text(
-      "There are no incoming requests at this time",
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        color: Color(0xFF004782),
-        fontFamily: 'Muli',
-        fontSize: 15.0,
-      ),
-    );
+
     final menteeList = new FutureBuilder(
       future: _future,
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         if (snapshot.data == null) {
-          return Container(child: Center(child: Text("Refreshing Mentees List...")));
+          return Container(
+              child: Center(child: Text("Refreshing Mentees List...")));
         } else {
           return Flexible(
             child: ListView.builder(
@@ -68,20 +68,24 @@ class _MenteePageState extends State<MenteePage> {
                 return ListTile(
                   leading: CircleAvatar(
                     maxRadius: 23,
-                    backgroundImage: NetworkImage(NetworkUtils.host +
-                        AuthUtils.profilePics +
-                        snapshot.data[index].profile_image),
+                    backgroundImage: NetworkImage(
+                        users[index].profile_image != "noimage.jpg"
+                            ? NetworkUtils.host +
+                                AuthUtils.profilePics +
+                                snapshot.data[index].profile_image
+                            : AuthUtils.defaultProfileImg),
                   ),
                   title: Text(
-                      users[index].first_name +
-                          " " +
-                          users[index].last_name,
+                      users[index].first_name + " " + users[index].last_name,
                       style: TextStyle(
                         color: Color(0xFF041F36),
                         fontFamily: 'Muli',
                         fontSize: 16.0,
                       )),
-                  subtitle: Text(capitalize(users[index].industry == null ? 'Lifestyle' : users[index].industry),
+                  subtitle: Text(
+                      capitalize(users[index].industry == null
+                          ? 'Lifestyle'
+                          : users[index].industry),
                       style: TextStyle(
                         color: Color(0xFF25282A),
                         fontFamily: 'MuliBold',
@@ -93,12 +97,18 @@ class _MenteePageState extends State<MenteePage> {
                         fontFamily: 'MuliItalic',
                         fontSize: 12.0,
                       )),
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          SlideFromRightPageRoute(
-                              widget: MenteeDetailPage(users[index], widget.indexIds.elementAt(index), widget.sessionStatus.elementAt(index), widget.names, widget.mentorId)));
-                    },
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        SlideFromRightPageRoute(
+                            widget: MenteeDetailPage(
+                                index,
+                                users[index],
+                                widget.indexIds.elementAt(index),
+                                widget.sessionStatus.elementAt(index),
+                                widget.names,
+                                widget.mentorId)));
+                  },
                 );
               },
             ),
@@ -108,69 +118,74 @@ class _MenteePageState extends State<MenteePage> {
     );
     return Scaffold(
       backgroundColor: Colors.white,
-        body: Padding(
-          padding: const EdgeInsets.only(
-              left: 16.0, right: 16.0, top: 30.0, bottom: 30.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              widget.menteeIds!=null? menteeList: noConnectionsText,
-              SizedBox(
-                height: 20.0,
-              ),
-            ],
-          ),
+      body: Padding(
+        padding: const EdgeInsets.only(
+            left: 16.0, right: 16.0, top: 30.0, bottom: 30.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            widget.menteeIds != null ? menteeList : noConnectionsText,
+            SizedBox(
+              height: 20.0,
+            ),
+          ],
         ),
+      ),
     );
   }
 
-
-    Future<dynamic> _getMenteeJsonByIndex(String index) async {
-      SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-      var data = await http.get(
-        NetworkUtils.host + AuthUtils.endPointMenteeProfile+ index,
-        headers: {
-          'Authorization': "Bearer " + sharedPreferences.getString("token"),
-          'Accept': 'application/json'
-        },
-      );
-      var jsonData = json.decode(data.body);
-      return jsonData;
-
-    }
-
+  Future<dynamic> _getMenteeJsonByIndex(String index) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var data = await http.get(
+      NetworkUtils.host + AuthUtils.endPointMenteeProfile + index,
+      headers: {
+        'Authorization': "Bearer " + sharedPreferences.getString("token"),
+        'Accept': 'application/json'
+      },
+    );
+    var jsonData = json.decode(data.body);
+    return jsonData;
+  }
 
   Future<List<Mentee>> _updateListOfMentees(Iterable menteeIds) async {
-      for(int i = 0; i < menteeIds.length; i++){
-        final dynamic menteeJson = await _getMenteeJsonByIndex(menteeIds.elementAt(i));
-        Mentee user = Mentee(
-            menteeJson["category"],
-            menteeJson["email"],
-            menteeJson["email_verified_at"],
-            menteeJson["first_name"],
-            menteeJson["last_name"],
-            menteeJson["other_name"],
-            menteeJson["country"],
-            menteeJson["industry"],
-            menteeJson["gender"],
-            menteeJson["bio_interest"],
-            menteeJson["phone"],
-            menteeJson["state_of_origin"],
-            menteeJson["fav_quote"],
-            menteeJson["profile_image"],
-            menteeJson["terms"],
-            menteeJson["check_status"],
-            menteeJson["current_job"],
-            menteeJson["created_at"],
-            menteeJson["updated_at"],
-            menteeJson["social_id"],
-            menteeJson["id"]);
+    for (int i = 0; i < menteeIds.length; i++) {
+      final dynamic menteeJson =
+          await _getMenteeJsonByIndex(menteeIds.elementAt(i).toString());
+      Mentee user = Mentee(
+        menteeJson["category"],
+        menteeJson["email"],
+        menteeJson["email_verified_at"],
+        menteeJson["first_name"],
+        menteeJson["last_name"],
+        menteeJson["other_name"],
+        menteeJson["country"],
+        menteeJson["industry"],
+        menteeJson["gender"],
+        menteeJson["bio_interest"],
+        menteeJson["phone"],
+        menteeJson["state_of_origin"],
+        menteeJson["fav_quote"],
+        menteeJson["profile_image"],
+        menteeJson["terms"],
+        menteeJson["check_status"],
+        menteeJson["current_job"],
+        menteeJson["created_at"],
+        menteeJson["updated_at"],
+        menteeJson["social_id"],
+        menteeJson["id"],
+        getFromList(menteeJson["employment"], 'company'),
+        getFromList(menteeJson['employment'], 'position'),
+        getFromList(menteeJson['education'], 'institution'),
+        getFromList(menteeJson['education'], 'degree'),
+      );
 
-        users.add(user);
-
-      }
-     return users;
+      users.add(user);
     }
+    return users;
+  }
 
+  String getFromList(Map<String, dynamic> json, String key) {
+    return json != null ? json[key] : "";
+  }
 }

@@ -1,16 +1,16 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:maf_mentor/model/mentee.dart';
+import 'package:maf_mentor/model/mentorIndex.dart';
 import 'package:maf_mentor/route_animations/slide_from_right_page_route.dart';
 import 'package:maf_mentor/screens/chat_screen.dart';
 import 'package:maf_mentor/screens/schedule_meeting.dart';
 import 'package:maf_mentor/screens/utils/auth.dart';
 import 'package:maf_mentor/screens/utils/network.dart';
-import 'package:path/path.dart';
+import 'package:http/http.dart' as http;
+import 'package:progress_dialog/progress_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:strings/strings.dart';
 
@@ -20,7 +20,9 @@ class MenteeDetailPage extends StatefulWidget {
   dynamic status;
   String names;
   var mentorId;
-  MenteeDetailPage(this.user, this.id, this.status, this.names, this.mentorId);
+  int index;
+  MenteeDetailPage(this.index, this.user, this.id,
+      this.status, this.names, this.mentorId);
 
   @override
   _MenteeDetailPageState createState() => _MenteeDetailPageState();
@@ -28,38 +30,36 @@ class MenteeDetailPage extends StatefulWidget {
 
 class _MenteeDetailPageState extends State<MenteeDetailPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
-  static List<Mentee> mentorIndexes = [];
-  File _image;
+  List<MentorIndex> mentorIndexes = [];
   Color colorDynamic;
   String strText;
+  ProgressDialog pr;
+  Iterable statusRetrieve;
 
   @override
   void initState() {
     super.initState();
     colorDynamic = Color(0xFF004782);
     strText = "Request Mentorship";
+    _fetchIndex();
   }
 
   @override
   Widget build(BuildContext context) {
-    Future getImage() async {
-      var image = await ImagePicker.pickImage(source: ImageSource.gallery);
-
-      setState(() {
-        _image = image;
-        print('Image Path $_image');
-      });
-    }
-
-    Future uploadPic(BuildContext context) async {
-      //file name
-      String fileName = basename(_image.path);
-      setState(() {
-        print("Profile Picture uploaded");
-        Scaffold.of(context)
-            .showSnackBar(SnackBar(content: Text('Profile Picture Uploaded')));
-      });
-    }
+    pr = new ProgressDialog(context, type: ProgressDialogType.Normal);
+    //Dialog Style
+    pr.style(
+      message: "Please wait...",
+      borderRadius: 10.0,
+      backgroundColor: Colors.white,
+      progressWidget: CircularProgressIndicator(
+        strokeWidth: 3,
+      ),
+      elevation: 10.0,
+      insetAnimCurve: Curves.bounceIn,
+      progressTextStyle: TextStyle(color: Color(0xFF1C2447), fontSize: 14.0),
+      messageTextStyle: TextStyle(color: Color(0xFF1C2447), fontSize: 14.0),
+    );
 
     final userImg = CircleAvatar(
       radius: 70,
@@ -68,15 +68,10 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
         child: new SizedBox(
           width: 133.0,
           height: 133.0,
-          child: (_image != null)
-              ? Image.file(
-            _image,
-            fit: BoxFit.fill,
-          )
-              : Image.network(
-            NetworkUtils.host +
+          child:  Image.network(
+            widget.user.profile_image!="noimage.jpg"?  NetworkUtils.host +
                 AuthUtils.profilePics +
-                widget.user.profile_image,
+                widget.user.profile_image : AuthUtils.defaultProfileImg,
             fit: BoxFit.fill,
           ),
         ),
@@ -109,7 +104,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
     );
     final motto = Text(
       "${capitalize(
-          NetworkUtils.truncateWithEllipsis(50, widget.user.bio_interest))}",
+          widget.user.bio_interest!= null?NetworkUtils.truncateWithEllipsis(50, widget.user.bio_interest): "Not yet set")}",
       style: TextStyle(
         color: Color(0xFF004884),
         fontFamily: 'Muli',
@@ -117,32 +112,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
       ),
       textAlign: TextAlign.center,
     );
-    final sendRequestBtn = Container(
-      height: 50.0,
-      color: Colors.transparent,
-      child: Container(
-        margin: const EdgeInsets.only(left: 50.0, right: 50.0),
-        decoration: BoxDecoration(
-            border: Border.all(
-                color: Colors.white, style: BorderStyle.solid, width: 1.0),
-            color: colorDynamic,
-            borderRadius: BorderRadius.circular(20.0)),
-        child: InkWell(
-          onTap: () {
-            if (strText == "Cancel Mentorship") {
-              NetworkUtils.showSnackBar(_scaffoldKey,
-                  "You cannot cancel mentoship request at this time");
-            } else {
 
-            }
-          },
-          child: Center(
-            child: Text(strText,
-                style: TextStyle(color: Colors.white, fontFamily: 'Muli')),
-          ),
-        ),
-      ),
-    );
     final divider = new Divider();
     final acceptedBtn = Container(
       height: 50.0,
@@ -165,19 +135,22 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
         ),
       ),
     );
-    final rowButtons =  Row(children: <Widget>[
+    final acceptRejectBtns =  Row(children: <Widget>[
       Expanded(
         child: RaisedButton(
-          child: new Text(
-            "Start Chat",
-            style: new TextStyle(
-                color: Colors.white,
-                fontFamily: 'Muli'
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: new Text(
+              "Accept",
+              style: new TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'Muli'
+              ),
             ),
           ),
           textColor: Color(0xffffffff),
           color: Color(0xff3F82B9),
-          onPressed: () => Navigator.push(context, SlideFromRightPageRoute(widget: ChatPage(widget.user))),
+          onPressed: () => _acceptRequest(context),
         ),
       ),
       SizedBox(
@@ -185,11 +158,53 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
       ),
       Expanded(
         child: RaisedButton(
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: new Text(
+                "Reject",
+                style: new TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Muli'
+                ),
+              ),
+            ),
+            textColor: Color(0xffffffff),
+            color: Color(0xff898989),
+            onPressed: () => _declineRequest(context)
+        ),
+      ),
+    ]);
+    final rowButtons =  Row(children: <Widget>[
+      Expanded(
+        child: RaisedButton(
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
             child: new Text(
-              "Start Schedule",
+              "Start Chat",
               style: new TextStyle(
                   color: Colors.white,
                   fontFamily: 'Muli'
+              ),
+            ),
+          ),
+          textColor: Color(0xffffffff),
+          color: Color(0xff3F82B9),
+          onPressed: () => Navigator.push(context, SlideFromRightPageRoute(widget: ChatPage(widget.user, widget.mentorId))),
+        ),
+      ),
+      SizedBox(
+        width: 3.0,
+      ),
+      Expanded(
+        child: RaisedButton(
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: new Text(
+                "Start Schedule",
+                style: new TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Muli'
+                ),
               ),
             ),
             textColor: Color(0xffffffff),
@@ -224,7 +239,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
                 height: 5.0,
               ),
               Text(
-                  NetworkUtils.truncateWithEllipsis(120, widget.user.fav_quote),
+                  widget.user.fav_quote!=null ? NetworkUtils.truncateWithEllipsis(120, capitalize(widget.user.fav_quote)): "Not yet set",
                   style: TextStyle(
                       color: Color(0xff1A5893),
                       fontFamily: 'Muli',
@@ -257,7 +272,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
             SizedBox(
               height: 5.0,
             ),
-            Text("Work at Star Company",
+            Text(widget.user.company!=""? capitalize(widget.user.company):"Company not set",
                 style: TextStyle(
                     color: Color(0xff1A5893),
                     fontFamily: 'Muli',
@@ -265,7 +280,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
             SizedBox(
               height: 5.0,
             ),
-            Text("Position: Designer",
+            Text(widget.user.position!=""? capitalize(widget.user.position):"Position not set",
                 style: TextStyle(
                     color: Color(0xff1A5893),
                     fontFamily: 'Muli',
@@ -299,7 +314,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
             SizedBox(
               height: 5.0,
             ),
-            Text("Studied at Booky institute",
+            Text(widget.user.institution!=""? capitalize(widget.user.institution):"Institution not set",
                 style: TextStyle(
                     color: Color(0xff1A5893),
                     fontFamily: 'Muli',
@@ -307,7 +322,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
             SizedBox(
               height: 5.0,
             ),
-            Text("Degree: Phd",
+            Text(widget.user.degree!=""? capitalize(widget.user.degree):"Degree not set",
                 style: TextStyle(
                     color: Color(0xff1A5893),
                     fontFamily: 'Muli',
@@ -383,7 +398,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
             SizedBox(
               height: 70.0,
             ),
-            widget.status == null  || widget.status == "0" ? Center(child: rowButtons) : Center(child: rowButtons)
+            widget.status == null  || widget.status == "0" ? Center(child: acceptRejectBtns) : Center(child: rowButtons)
           ],
         ),
       ),
@@ -391,6 +406,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
   }
 
   _acceptRequest(BuildContext context) async {
+    pr.show();
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
 // set up PATCH request arguments
     // make PATCH request
@@ -402,12 +418,13 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
         'Authorization': 'Bearer ' + sharedPreferences.get("token"), },
           body: data);
       jsonResponse = json.decode(response.body);
-      print(jsonResponse.toString());
+     pr.hide();
       if (response.statusCode == 200 || response.statusCode == 201) {
         if(jsonResponse!=null){
           NetworkUtils.showToast("Mentee request accepted");
-          Navigator.pop(context);
-          print(jsonResponse.toString());
+       setState(() {
+         widget.status = "1";
+       });
         }
       } else if(response.statusCode == 404){
         NetworkUtils.showSnackBar(_scaffoldKey, "The requested resource does no longer exist");
@@ -422,6 +439,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
   }
 
   _declineRequest(BuildContext context) async{
+    pr.show();
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
 // set up PATCH request arguments
     // make PATCH request
@@ -433,7 +451,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
       'Authorization': 'Bearer ' + sharedPreferences.get("token"), },
         body: data);
     jsonResponse = json.decode(response.body);
-    print(jsonResponse.toString());
+    pr.hide();
     if (response.statusCode == 200 || response.statusCode == 201) {
       if(jsonResponse!=null){
         NetworkUtils.showRedToast("Mentee request declined");
@@ -448,6 +466,49 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
       if (exception.toString().contains('The requested resource does not exist')) {
       NetworkUtils.showSnackBar(_scaffoldKey, "The requested resource does not exist");
       }
+    }
+  }
+  Future _fetchIndex() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var uri = NetworkUtils.host + AuthUtils.endPointIndex;
+    try {
+      final response = await http.get(
+        uri,
+        headers: {'Accept': 'application/json', 'Content-Type': 'application/json','Authorization': 'Bearer ' + sharedPreferences.get("token"), },
+      );
+      final responseJson = json.decode(response.body);
+      for (var u in responseJson["data"]) {
+        MentorIndex user = MentorIndex(
+            u["id"],
+            u["mentor_id"],
+            u["mentee_id"],
+            u["status"],
+            u["session_count"],
+            u["current_job"],
+            u["email"],
+            u["phone_call"],
+            u["video_call"],
+            u["face_to_face"],
+            u["created_at"],
+            u["updated_at"]);
+
+        mentorIndexes.add(user);
+        setState((){
+          statusRetrieve = mentorIndexes.map((MentorIndex) => MentorIndex.status);
+        });
+      }
+      if(statusRetrieve.elementAt(widget.index) == "1"){
+        setState(() {
+          widget.status = "1";
+        });
+      } else{
+        setState(() {
+          widget.status = "0";
+        });
+      }
+      return responseJson;
+    } catch (exception) {
+      print(exception);
     }
   }
 }

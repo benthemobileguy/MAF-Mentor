@@ -24,6 +24,8 @@ class ScheduleMeeting extends StatefulWidget {
 class _ScheduleMeetingState extends State<ScheduleMeeting> {
   String selectedStartDate = "";
   String selectedEndDate = "";
+  int startMillis;
+  int endMillis;
   String selectedTime = "";
   bool _isLoading = false;
   final TextEditingController _titleController = new TextEditingController();
@@ -54,9 +56,9 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
                   fit: BoxFit.fill,
                 )
                     : Image.network(
-                  NetworkUtils.host +
+                  widget.user.profile_image != "noimage.jpg" ? NetworkUtils.host +
                       AuthUtils.profilePics +
-                      widget.user.profile_image,
+                      widget.user.profile_image: AuthUtils.defaultProfileImg,
                   fit: BoxFit.fill,
                 ),
               ),
@@ -72,6 +74,7 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
       ],
     );
     final purpose_text = TextFormField(
+      textCapitalization: TextCapitalization.sentences,
         validator: this._validateTitle,
         controller: _titleController,
         decoration: InputDecoration(
@@ -180,7 +183,7 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
         onShowPicker: (context, currentValue) async {
           final date = await showDatePicker(
               context: context,
-              firstDate: DateTime(1900),
+              firstDate: DateTime.now().subtract(Duration(days: 1)),
               initialDate: currentValue ?? DateTime.now(),
               lastDate: DateTime(2100));
           if (date != null) {
@@ -191,6 +194,7 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
             );
             setState(() {
               selectedStartDate = date.toString();
+              startMillis = date.millisecondsSinceEpoch;
               selectedTime = time.hour.toString() + ":" + time.minute.toString();
 
             });
@@ -211,19 +215,16 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
         onShowPicker: (context, currentValue) async {
           final date = await showDatePicker(
               context: context,
-              firstDate: DateTime(1900),
+              firstDate: DateTime.now().subtract(Duration(days: 1)),
               initialDate: currentValue ?? DateTime.now(),
               lastDate: DateTime(2100));
           if (date != null) {
-//            final time = await showTimePicker(
-//              context: context,
-//              initialTime:
-//                  TimeOfDay.fromDateTime(currentValue ?? DateTime.now()),
-//            );
             setState(() {
               selectedEndDate = date.toString();
+              endMillis = date.millisecondsSinceEpoch;
             });
-            return DateTimeField.combine(date, null);
+            return  endMillis > startMillis ?DateTimeField.combine(date, null):
+            NetworkUtils.showSnackBar(_scaffoldKey, "End date must be greater than Start date");
           } else {
             return currentValue;
           }
@@ -322,16 +323,25 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
       });
       SharedPreferences sharedPreferences =
       await SharedPreferences.getInstance();
-      Map data = {'title': _titleController.text, 'color': currentColor.toString(), 'start_date': selectedStartDate,
-        'end_date': selectedEndDate, 'mentor_id': widget.mentorId.toString(), 'mentee_id': widget.user.id.toString(), 'initiator': widget.mentorId.toString(), 'scheduled_time': selectedTime};
+      Map data = {
+        'title': _titleController.text,
+        'color': currentColor.toString(),
+        'start_date': selectedStartDate,
+        'end_date': selectedEndDate,
+        'mentor_id': widget.mentorId.toString(),
+        'mentee_id': widget.user.id.toString(),
+        'initiator': widget.mentorId.toString(),
+        'scheduled_time': selectedTime};
       final finalData = jsonEncode(data);
       var jsonResponse = null;
       var response = await http.post(
           NetworkUtils.host + AuthUtils.postSchedule,
           headers: {
             'Authorization': "Bearer " + sharedPreferences.getString("token"),
-            'Accept': 'application/json'
-          }, body: finalData
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: finalData
       );
       print(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {

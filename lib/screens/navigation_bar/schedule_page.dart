@@ -61,49 +61,55 @@ class _SchedulePageState extends State<SchedulePage> {
             child: ListView.builder(
               itemCount: scheduleList.length,
               itemBuilder: (BuildContext context, int index) {
-                return Container(
-                  decoration: BoxDecoration(
-                      color: Color(int.parse(extractColor(scheduleList[index].color))),
-                    border: Border.all(color: Color(int.parse(extractColor(scheduleList[index].color))),),
-                      borderRadius: BorderRadius.all(Radius.circular(10))
-                  ),
-                  child: ListTile(
-                    title: Padding(
-                      padding: const EdgeInsets.only(bottom: 20.0, top: 12.0),
-                      child: Text(
-                          DateFormat("EEEE, MMMM, yyyy").format(DateTime.parse(scheduleList[index].start_date)),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontFamily: 'Muli',
-                            fontSize: 11.0,
-                          )),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(bottom: 20.0),
-                      child: Text(capitalize(scheduleList[index].title),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontFamily: 'Muli',
-                            fontSize: 15.0,
-                          )),
-                    ),
-
-                    trailing:  CircleAvatar(
-                      backgroundColor: Color(0xFFEBAD03),
-                      radius: 24,
-                      child: ClipOval(
-                          child: Image.network(isProfileImgRetrieved ? NetworkUtils.host +
-                              AuthUtils.profilePics +
-                              users[index].profile_image :  AuthUtils.defaultProfileImg,
-                            fit: BoxFit.cover,
-                            width: 45.0,
-                            height: 45.0,
-                          )
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                        color: Color(
+                            int.parse(extractColor(scheduleList[index].color))),
+                        border: Border.all(
+                          color: Color(int.parse(
+                              extractColor(scheduleList[index].color))),
+                        ),
+                        borderRadius: BorderRadius.all(Radius.circular(10))),
+                    child: ListTile(
+                      title: Padding(
+                        padding: const EdgeInsets.only(bottom: 20.0, top: 12.0),
+                        child: Text(
+                            DateFormat("EEEE, dd, MMMM, yyyy").format(
+                                DateTime.parse(scheduleList[index].start_date)),
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontFamily: 'Muli',
+                              fontSize: 11.0,
+                            )),
                       ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(bottom: 20.0),
+                        child: Text(capitalize(scheduleList[index].title),
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontFamily: 'Muli',
+                              fontSize: 15.0,
+                            )),
+                      ),
+                      trailing: CircleAvatar(
+                        backgroundColor: Color(0xFFEBAD03),
+                        radius: 24,
+                        child: ClipOval(
+                            child: Image.network(
+                          isProfileImgRetrieved
+                              ? NetworkUtils.host +
+                                  AuthUtils.profilePics +
+                                  users[index].profile_image
+                              : AuthUtils.defaultProfileImg,
+                          fit: BoxFit.cover,
+                          width: 45.0,
+                          height: 45.0,
+                        )),
+                      ),
+                      onTap: () {},
                     ),
-                    onTap: () {
-
-                    },
                   ),
                 );
               },
@@ -121,7 +127,7 @@ class _SchedulePageState extends State<SchedulePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            isList? scheduleUpdatedList: noScheduleText,
+            isList ? scheduleUpdatedList : noScheduleText,
             SizedBox(
               height: 20.0,
             ),
@@ -131,17 +137,17 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-
-
   Future fetchLatestScheduleList() async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     var uri = NetworkUtils.host + AuthUtils.latestSchedule;
     try {
       final response = await http.get(
         uri,
-        headers: {'Accept': 'application/json',
+        headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + sharedPreferences.get("token"), },
+          'Authorization': 'Bearer ' + sharedPreferences.get("token"),
+        },
       );
       final responseJson = json.decode(response.body);
       for (var u in responseJson["data"]) {
@@ -159,65 +165,78 @@ class _SchedulePageState extends State<SchedulePage> {
             u["created_at"],
             u["updated_at"]);
         scheduleList.add(schedule);
-       setState((){
+        setState(() {
           menteeIds = scheduleList.map((Schedule) => Schedule.mentee_id);
           _updateUserList(menteeIds);
         });
       }
-     if(scheduleList.length> 0){
-       setState(() {
-         isList = true;
-       });
-     } else{
-       setState(() {
-         isList = false;
-       });
-     }
+      if (scheduleList.length > 0) {
+        setState(() {
+          isList = true;
+        });
+      } else {
+        setState(() {
+          isList = false;
+        });
+      }
       return responseJson;
     } catch (exception) {
       print(exception);
     }
-
   }
-extractColor(String string){
-  return string.replaceAll("MaterialColor(primary value: Color(", '').replaceAll(")", '');
-}
+
+  extractColor(String string) {
+    if (string.contains("MaterialColor")) {
+      return string
+          .replaceAll("MaterialColor(primary value: Color(", '')
+          .replaceAll(")", '');
+    } else {
+      return "0xff" + string.replaceAll("#", '');
+    }
+  }
+
   Future<List<Mentee>> _updateUserList(Iterable user) async {
-    for(int i = 0; i < menteeIds.length; i++){
-      final dynamic menteeJson = await _getMenteeJsonByIndex(menteeIds.elementAt(i).toString());
+    for (int i = 0; i < menteeIds.length; i++) {
+      final dynamic menteeJson =
+          await _getMenteeJsonByIndex(menteeIds.elementAt(i).toString());
       Mentee user = Mentee(
-          menteeJson["category"],
-          menteeJson["email"],
-          menteeJson["email_verified_at"],
-          menteeJson["first_name"],
-          menteeJson["last_name"],
-          menteeJson["other_name"],
-          menteeJson["country"],
-          menteeJson["industry"],
-          menteeJson["gender"],
-          menteeJson["bio_interest"],
-          menteeJson["phone"],
-          menteeJson["state_of_origin"],
-          menteeJson["fav_quote"],
-          menteeJson["profile_image"],
-          menteeJson["terms"],
-          menteeJson["check_status"],
-          menteeJson["current_job"],
-          menteeJson["created_at"],
-          menteeJson["updated_at"],
-          menteeJson["social_id"],
-          menteeJson["id"]);
+        menteeJson["category"],
+        menteeJson["email"],
+        menteeJson["email_verified_at"],
+        menteeJson["first_name"],
+        menteeJson["last_name"],
+        menteeJson["other_name"],
+        menteeJson["country"],
+        menteeJson["industry"],
+        menteeJson["gender"],
+        menteeJson["bio_interest"],
+        menteeJson["phone"],
+        menteeJson["state_of_origin"],
+        menteeJson["fav_quote"],
+        menteeJson["profile_image"],
+        menteeJson["terms"],
+        menteeJson["check_status"],
+        menteeJson["current_job"],
+        menteeJson["created_at"],
+        menteeJson["updated_at"],
+        menteeJson["social_id"],
+        menteeJson["id"],
+        getFromList(menteeJson["employment"], 'company'),
+        getFromList(menteeJson['employment'], 'position'),
+        getFromList(menteeJson['education'], 'institution'),
+        getFromList(menteeJson['education'], 'degree'),
+      );
 
       users.add(user);
-
     }
-    if(users.length!=0){
+    if (users.length != 0) {
       setState(() {
         isProfileImgRetrieved = true;
       });
     }
     return users;
   }
+
   Future<dynamic> _getMenteeJsonByIndex(String index) async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     var data = await http.get(
@@ -229,6 +248,9 @@ extractColor(String string){
     );
     var jsonData = json.decode(data.body);
     return jsonData;
+  }
 
+  String getFromList(Map<String, dynamic> json, String key) {
+    return json != null ? json[key] : "";
   }
 }

@@ -7,7 +7,7 @@ import 'package:maf_mentor/model/mentorIndex.dart';
 import 'package:maf_mentor/model/user.dart';
 import 'package:maf_mentor/route_animations/slide_from_right_page_route.dart';
 import 'package:maf_mentor/screens/navigation_bar/home_page.dart';
-import 'package:maf_mentor/screens/navigation_bar/mentoring_board_page.dart';
+import 'package:flutter/services.dart';
 import 'package:maf_mentor/screens/navigation_bar/mentee_page.dart';
 import 'package:maf_mentor/screens/navigation_bar/resources_page.dart';
 import 'package:maf_mentor/screens/login.dart';
@@ -254,12 +254,17 @@ class _DashBoardPageState extends State<DashBoardPage> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MAF Mentor',
-
       debugShowCheckedModeBanner: false,
       home: DefaultTabController(
         length: choices.length,
-        child: Scaffold(
+        child: WillPopScope(
+          onWillPop: onWillPop,
+       child: Scaffold(
           appBar: AppBar(
+            leading: _currentIndex!= 0 ? new IconButton(
+              icon: new Icon(Icons.arrow_back, color: Color(0xFF1C2447)),
+              onPressed: () =>onWillPop(),
+            ) : null,
             backgroundColor: Color(0xFFFFFFFF),
             title: Text(
               _appBarText,
@@ -412,6 +417,7 @@ class _DashBoardPageState extends State<DashBoardPage> {
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -520,6 +526,14 @@ class _DashBoardPageState extends State<DashBoardPage> {
       setState(() {
         isAdminVerified = true;
       });
+    }
+  }
+  Future<bool> onWillPop() {
+    if (_currentIndex != 0) {
+      Navigator.of(context).pushReplacementNamed('/dashboard');
+    } else{
+      //close the app
+      SystemChannels.platform.invokeMethod('SystemNavigator.pop');
     }
   }
 }

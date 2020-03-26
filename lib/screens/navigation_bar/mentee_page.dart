@@ -3,10 +3,12 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:maf_mentor/model/mentee.dart';
 import 'package:maf_mentor/route_animations/slide_from_right_page_route.dart';
+import 'package:maf_mentor/screens/animations/shimmer_layout.dart';
 import 'package:maf_mentor/screens/mentee_detail_page.dart';
 import 'package:maf_mentor/screens/utils/auth.dart';
 import 'package:maf_mentor/screens/utils/network.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:strings/strings.dart';
 
 class MenteePage extends StatefulWidget {
@@ -40,6 +42,8 @@ class _MenteePageState extends State<MenteePage> {
 
   @override
   Widget build(BuildContext context) {
+    int offset = 0;
+    int time = 800;
     final noConnectionsText = Center(
       child: Container(
         child: Text(
@@ -58,8 +62,22 @@ class _MenteePageState extends State<MenteePage> {
       future: _future,
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         if (snapshot.data == null) {
-          return Container(
-              child: Center(child: Text("Refreshing Mentees List...")));
+          return Flexible(
+            child: ListView.builder(
+              itemCount: 4,
+              itemBuilder: (BuildContext context, int index) {
+                offset += 5;
+                time = 800 + offset;
+
+                return Shimmer.fromColors(
+                  highlightColor: Colors.white,
+                  baseColor: Colors.grey[200],
+                  child: ShimmerLayout(),
+                  period: Duration(milliseconds: time),
+                );
+              },
+            ),
+          );
         } else {
           return Flexible(
             child: ListView.builder(

@@ -167,7 +167,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
     final work = Text(
-      widget.industry != "" ? "${widget.industry}" : "Not yet set",
+      widget.email != "" ? "${widget.email}" : "Not yet set",
       style: TextStyle(
         color: Color(0xFF1C2447),
         fontFamily: 'MuliRegular',

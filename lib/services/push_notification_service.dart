@@ -3,11 +3,17 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 class PushNotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging();
 
-
   Future initialise() async {
     if (Platform.isIOS) {
       // request permissions if we're on android
       _fcm.requestNotificationPermissions(IosNotificationSettings());
+      _fcm.configure();
+      // For testing purposes print the Firebase Messaging token
+      String token = await _fcm.getToken();
+      print("FirebaseMessaging token: $token");
+    } else{
+      String token = await _fcm.getToken();
+      print("FirebaseMessaging token: $token");
     }
 
     _fcm.configure(
@@ -28,7 +34,6 @@ class PushNotificationService {
         _serialiseAndNavigate(message);
       },
     );
-    print("scscsc");
   }
 
   void _serialiseAndNavigate(Map<String, dynamic> message) {

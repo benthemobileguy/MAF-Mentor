@@ -28,7 +28,7 @@ class DashBoardPage extends StatefulWidget {
   _DashBoardPageState createState() => _DashBoardPageState();
 }
 
-class _DashBoardPageState extends State<DashBoardPage> {
+class _DashBoardPageState extends State<DashBoardPage> with TickerProviderStateMixin{
   final PushNotificationService _pushNotificationService =
   locator<PushNotificationService>();
   bool isUpdateProfile = true;
@@ -57,8 +57,9 @@ class _DashBoardPageState extends State<DashBoardPage> {
   String _phone_number;
   String _bio_interest = "";
   String _email = "";
-  String _profile_image = "";
+  String _profile_image = "noimage.jpg";
   int _currentIndex = 0;
+  TabController _tabController;
   var id;
   String _appBarText = "Welcome";
   Future _future;
@@ -225,18 +226,20 @@ class _DashBoardPageState extends State<DashBoardPage> {
         showTabs = true;
         _appBarText = "Welcome, " + _firstName;
         return TabBarView(
-            children: [new HomePage(), new SchedulePage()]);
+            controller: _tabController,
+            children: [new HomePage(), new MenteePage(menteeIds: newList,
+    indexIds: indexIds, names:names, sessionStatus: status, mentorId:id),
+              new SchedulePage()]);
         break;
       case 1:
         showTabs = false;
         _appBarText = "Mentoring Board";
-        return MenteePage(menteeIds: newList,
-            indexIds: indexIds, names:names, sessionStatus: status, mentorId:id);
+        return null;
         break;
       case 2:
         showTabs = false;
         _appBarText = "Resources";
-        return ResourcesPage();
+        return null;
         break;
       default:
         return HomePage();
@@ -248,15 +251,22 @@ class _DashBoardPageState extends State<DashBoardPage> {
     super.initState();
     checkLoginState();
     _future = fetchIndex();
+    _tabController = new TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabSelection);
   }
 
   @override
   Widget build(BuildContext context) {
+    List<Choice> tabs = [
+      _tabController.index ==0?Choice('assets/images/chat_active.png'): Choice('assets/images/chat_inactive.png'),
+    _tabController.index ==1 ?  Choice('assets/images/requests_active.png'): Choice('assets/images/requests_inactive.png'),
+    _tabController.index ==2? Choice('assets/images/schedule_active.png'): Choice('assets/images/schedule_inactive.png'),
+    ];
     return MaterialApp(
       title: 'MAF Mentor',
       debugShowCheckedModeBanner: false,
       home: DefaultTabController(
-        length: choices.length,
+        length: tabs.length,
         child: WillPopScope(
           onWillPop: onWillPop,
        child: Scaffold(
@@ -275,17 +285,14 @@ class _DashBoardPageState extends State<DashBoardPage> {
               ),
             ),
             bottom: showTabs
-                ? TabBar(
-                    isScrollable: true,
-                    tabs: choices.map<Widget>((Choice choice) {
-                      return Tab(
-                        text: choice.title,
-                        icon: Icon(choice.icon),
-                      );
-                    }).toList(),
-                    labelColor: Color(0xFF1C2447),
-                  )
-                : null,
+                ?  TabBar(
+              controller: _tabController,
+              tabs: tabs
+                  .map((Choice tab) => Tab(
+                icon: Image.asset(tab.image, height: 25, width: 25,),
+              ))
+                  .toList(),
+            ) : null,
             actions: <Widget>[
               GestureDetector(
                 onTap: () {
@@ -535,5 +542,9 @@ class _DashBoardPageState extends State<DashBoardPage> {
       //close the app
       SystemChannels.platform.invokeMethod('SystemNavigator.pop');
     }
+  }
+  void _handleTabSelection() {
+    setState(() {
+    });
   }
 }

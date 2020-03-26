@@ -5,10 +5,12 @@ import 'package:intl/intl.dart';
 import 'package:maf_mentor/model/mentee.dart';
 import 'package:maf_mentor/model/schedule.dart';
 import 'package:maf_mentor/route_animations/slide_from_right_page_route.dart';
+import 'package:maf_mentor/screens/animations/shimmer_layout.dart';
 import 'package:maf_mentor/screens/mentee_detail_page.dart';
 import 'package:maf_mentor/screens/utils/auth.dart';
 import 'package:maf_mentor/screens/utils/network.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:strings/strings.dart';
 
 class SchedulePage extends StatefulWidget {
@@ -25,6 +27,8 @@ class _SchedulePageState extends State<SchedulePage> {
   bool isList = true;
   bool isProfileImgRetrieved = false;
   List<Schedule> scheduleList = [];
+  int offset = 0;
+  int time = 800;
   @override
   void initState() {
     // TODO: implement initState
@@ -55,7 +59,22 @@ class _SchedulePageState extends State<SchedulePage> {
       future: _future,
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         if (snapshot.data == null) {
-          return Container(child: Center(child: Text("Loading...")));
+          return Flexible(
+            child: ListView.builder(
+              itemCount: 4,
+              itemBuilder: (BuildContext context, int index) {
+                offset += 5;
+                time = 800 + offset;
+
+                return Shimmer.fromColors(
+                  highlightColor: Colors.white,
+                  baseColor: Colors.grey[200],
+                  child: ShimmerLayout(),
+                  period: Duration(milliseconds: time),
+                );
+              },
+            ),
+          );
         } else {
           return Flexible(
             child: ListView.builder(

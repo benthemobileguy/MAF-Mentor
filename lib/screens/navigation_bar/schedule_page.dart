@@ -6,23 +6,30 @@ import 'package:maf_mentor/model/mentee.dart';
 import 'package:maf_mentor/model/schedule.dart';
 import 'package:maf_mentor/route_animations/slide_from_right_page_route.dart';
 import 'package:maf_mentor/screens/animations/shimmer_layout.dart';
-import 'package:maf_mentor/screens/mentee_detail_page.dart';
 import 'package:maf_mentor/screens/utils/auth.dart';
+import 'package:maf_mentor/screens/schedule_meeting.dart';
 import 'package:maf_mentor/screens/utils/network.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:strings/strings.dart';
 
 class SchedulePage extends StatefulWidget {
   var mentorId;
-
+  Iterable menteeIds;
+  SchedulePage(
+      {Key key,
+        this.menteeIds, this.mentorId})
+      : super(key: key);
   @override
   _SchedulePageState createState() => _SchedulePageState();
 }
 
 class _SchedulePageState extends State<SchedulePage> {
+
   Iterable menteeIds;
   List<Mentee> users = [];
+  List<Mentee> menteeUsers = [];
   Future _future;
   bool isList = true;
   bool isProfileImgRetrieved = false;
@@ -34,6 +41,7 @@ class _SchedulePageState extends State<SchedulePage> {
     // TODO: implement initState
     super.initState();
     _future = fetchLatestScheduleList();
+    _updateListOfMentees(widget.menteeIds);
   }
 
   @override
@@ -138,6 +146,18 @@ class _SchedulePageState extends State<SchedulePage> {
       },
     );
     return Scaffold(
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: FloatingActionButton(
+          onPressed: () => {
+            showMenteeList()
+          },
+          child: Icon(MdiIcons.plus),
+          backgroundColor: Color(0xFF1C2447),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        ),
+      ),
       backgroundColor: Colors.white,
       body: Padding(
         padding: const EdgeInsets.only(
@@ -271,5 +291,112 @@ class _SchedulePageState extends State<SchedulePage> {
 
   String getFromList(Map<String, dynamic> json, String key) {
     return json != null ? json[key] : "";
+  }
+  showMenteeList() {
+    showModalBottomSheet(
+        context: context,
+        backgroundColor: Color(0xFFCEFF1FF),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30.0),
+                topRight: Radius.circular(30.0))),
+        builder: (context) {
+          return FutureBuilder(
+              future: Future.delayed(Duration(seconds: 1), () => 1),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Container(
+                    child: CircularProgressIndicator(),
+                    alignment: FractionalOffset.center,
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 30.0, left: 12.0, right: 12.0),
+                  child: ListView.separated(
+                    separatorBuilder: (BuildContext context, int index) => Divider(
+                      color: Color(0xFF041F36),
+                    ),
+                    itemCount: menteeUsers.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      return ListTile(
+                        leading: CircleAvatar(
+                          maxRadius: 23,
+                          backgroundImage: NetworkImage(NetworkUtils.host +
+                              AuthUtils.profilePics +
+                              menteeUsers[index].profile_image),
+                        ),
+                        title: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                              menteeUsers[index].first_name + " " + users[index].last_name,
+                              style: TextStyle(
+                                color: Color(0xFF041F36),
+                                fontFamily: 'Muli',
+                                fontSize: 16.0,
+                              )),
+                        ),
+                        subtitle: Text(
+                            menteeUsers[index].industry,
+                            style: TextStyle(
+                              color: Color(0xFF041F36),
+                              fontFamily: 'MuliItalic',
+                              fontSize: 12.5,
+                            )),
+                        trailing: Text(capitalize(menteeUsers[index].country),
+                            style: TextStyle(
+                              color: Color(0xFF25282A),
+                              fontFamily: 'MuliItalic',
+                              fontSize: 12.0,
+                            )),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                              context, SlideFromRightPageRoute(widget:
+                          ScheduleMeeting(menteeUsers[index], menteeUsers[index].first_name +
+                              " " + menteeUsers[index].last_name, widget.mentorId)));
+                        },
+                      );
+                    },
+                  ),
+                );
+              });
+        });
+  }
+
+  Future<List<Mentee>> _updateListOfMentees(Iterable menteeIds) async {
+    for (int i = 0; i < menteeIds.length; i++) {
+      final dynamic menteeJson =
+      await _getMenteeJsonByIndex(menteeIds.elementAt(i).toString());
+      Mentee user = Mentee(
+        menteeJson["category"],
+        menteeJson["email"],
+        menteeJson["email_verified_at"],
+        menteeJson["first_name"],
+        menteeJson["last_name"],
+        menteeJson["other_name"],
+        menteeJson["country"],
+        menteeJson["industry"],
+        menteeJson["gender"],
+        menteeJson["bio_interest"],
+        menteeJson["phone"],
+        menteeJson["state_of_origin"],
+        menteeJson["fav_quote"],
+        menteeJson["profile_image"],
+        menteeJson["terms"],
+        menteeJson["check_status"],
+        menteeJson["current_job"],
+        menteeJson["created_at"],
+        menteeJson["updated_at"],
+        menteeJson["social_id"],
+        menteeJson["id"],
+        getFromList(menteeJson["employment"], 'company'),
+        getFromList(menteeJson['employment'], 'position'),
+        getFromList(menteeJson['education'], 'institution'),
+        getFromList(menteeJson['education'], 'degree'),
+      );
+
+      menteeUsers.add(user);
+    }
+    return users;
   }
 }

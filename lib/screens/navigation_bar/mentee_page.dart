@@ -121,6 +121,7 @@ class _MenteePageState extends State<MenteePage> {
                         SlideFromRightPageRoute(
                             widget: MenteeDetailPage(
                                 index,
+                                widget.menteeIds,
                                 users[index],
                                 widget.indexIds.elementAt(index),
                                 widget.sessionStatus.elementAt(index),

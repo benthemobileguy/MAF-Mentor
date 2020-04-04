@@ -212,6 +212,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                                 SizedBox(height: 15.0),
                                 TextField(
                                   controller: _country,
+                                  readOnly: true,
                                   style: TextStyle(fontFamily: 'OpenSans'),
                                   textCapitalization: TextCapitalization.sentences,
                                   textAlign: TextAlign.start,

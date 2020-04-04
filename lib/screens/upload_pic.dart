@@ -142,7 +142,7 @@ class _UploadPicState extends State<UploadPicPage> {
               child: (_image != null)
                   ? Image.file(
                 _image,
-                fit: BoxFit.fill,
+                fit: BoxFit.cover,
               )
                   : Image.network(
                 widget.profile_image == "noimage.jpg"
@@ -150,7 +150,7 @@ class _UploadPicState extends State<UploadPicPage> {
                     : NetworkUtils.host +
                     AuthUtils.profilePics +
                     widget.profile_image,
-                fit: BoxFit.fill,
+                fit: BoxFit.cover,
               ),
             ),
           ),

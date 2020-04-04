@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
@@ -17,11 +20,12 @@ import 'package:strings/strings.dart';
 class MenteeDetailPage extends StatefulWidget {
   Mentee user;
   var id;
+  Iterable menteeIds;
   dynamic status;
   String names;
   var mentorId;
   int index;
-  MenteeDetailPage(this.index, this.user, this.id,
+  MenteeDetailPage(this.index, this.menteeIds, this.user, this.id,
       this.status, this.names, this.mentorId);
 
   @override
@@ -32,10 +36,12 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   List<MentorIndex> mentorIndexes = [];
   Color colorDynamic;
+  final String serverToken = "AAAA58t2zSA:APA91bFAUKteVAxPeVXArbXTUpXzk5mIceGTVDMGJGAStdB1avWev-IYs6_ojymE6l5eGuXAPCyMl2rfqcXYCxQKqNg7l_2eWNESC6nHHs_7KGsuuSK7JO5gyWFCRSnMmhgiOdRiOeqF";
+  final FirebaseMessaging firebaseMessaging = FirebaseMessaging();
   String strText;
   ProgressDialog pr;
   Iterable statusRetrieve;
-
+  String tokenString;
   @override
   void initState() {
     super.initState();
@@ -72,7 +78,7 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
             widget.user.profile_image!="noimage.jpg"?  NetworkUtils.host +
                 AuthUtils.profilePics +
                 widget.user.profile_image : AuthUtils.defaultProfileImg,
-            fit: BoxFit.fill,
+            fit: BoxFit.cover,
           ),
         ),
       ),
@@ -413,7 +419,8 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
     Map data = {'status': "1"};
     var jsonResponse = null;
     try{
-      Response response = await patch(NetworkUtils.host + AuthUtils.endPointSession + widget.id.toString(), headers: {'Accept': 'application/json',
+      Response response = await patch(NetworkUtils.host
+          + AuthUtils.endPointSession + widget.id.toString(), headers: {'Accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': 'Bearer ' + sharedPreferences.get("token"), },
           body: data);
@@ -421,6 +428,16 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
      pr.hide();
       if (response.statusCode == 200 || response.statusCode == 201) {
         if(jsonResponse!=null){
+          await Firestore.instance
+              .collection('Tokens')
+              .document(widget.menteeIds.elementAt(widget.index).toString())
+              .get()
+              .then((DocumentSnapshot ds) {
+            tokenString = ds.data['token'].toString();
+            sendAndRetrieveMessage(tokenString, "Request Accepted", "A mentor just accepted your connection request");
+            return ds.data['token'].toString();
+
+          });
           NetworkUtils.showToast("Mentee request accepted");
        setState(() {
          widget.status = "1";
@@ -454,6 +471,16 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
     pr.hide();
     if (response.statusCode == 200 || response.statusCode == 201) {
       if(jsonResponse!=null){
+        await Firestore.instance
+            .collection('Tokens')
+            .document(widget.menteeIds.elementAt(widget.index).toString())
+            .get()
+            .then((DocumentSnapshot ds) {
+          tokenString = ds.data['token'].toString();
+          sendAndRetrieveMessage(tokenString, "Request Declined", "Your connection request was declined by a mentor");
+          return ds.data['token'].toString();
+
+        });
         NetworkUtils.showRedToast("Mentee request declined");
         Navigator.pop(context);
         print(jsonResponse.toString());
@@ -510,6 +537,43 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
     } catch (exception) {
       print(exception);
     }
+  }
+
+  Future<Map<String, dynamic>> sendAndRetrieveMessage(String token, String title, String body) async {
+    await firebaseMessaging.requestNotificationPermissions(
+      const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: false),
+    );
+    await http.post(
+      'https://fcm.googleapis.com/fcm/send',
+      headers: <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'key = $serverToken',
+      },
+      body: jsonEncode(
+        <String, dynamic>{
+          'notification': <String, dynamic>{
+            'body': body,
+            'title': title
+          },
+          'priority': 'high',
+          'data': <String, dynamic>{
+            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            'id': '1',
+            'status': 'done'
+          },
+          'to': token,
+        },
+      ),
+    );
+
+    final Completer<Map<String, dynamic>> completer =
+    Completer<Map<String, dynamic>>();
+    firebaseMessaging.configure(
+      onMessage: (Map<String, dynamic> message) async {
+        completer.complete(message);
+      },
+    );
+    return completer.future;
   }
 }
 

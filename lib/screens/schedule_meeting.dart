@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -22,9 +25,12 @@ class ScheduleMeeting extends StatefulWidget {
 }
 
 class _ScheduleMeetingState extends State<ScheduleMeeting> {
+  final FirebaseMessaging firebaseMessaging = FirebaseMessaging();
+  final String serverToken = "AAAA58t2zSA:APA91bFAUKteVAxPeVXArbXTUpXzk5mIceGTVDMGJGAStdB1avWev-IYs6_ojymE6l5eGuXAPCyMl2rfqcXYCxQKqNg7l_2eWNESC6nHHs_7KGsuuSK7JO5gyWFCRSnMmhgiOdRiOeqF";
   String selectedStartDate = "";
   String selectedEndDate = "";
   int startMillis;
+  String tokenString;
   int endMillis;
   String selectedTime = "";
   bool _isLoading = false;
@@ -36,7 +42,11 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
   File _image;
   final format = DateFormat("yyyy-MM-dd HH:mm");
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
-
+@override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
   @override
   Widget build(BuildContext context) {
     final mentor = Row(
@@ -53,13 +63,13 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
                 child: (_image != null)
                     ? Image.file(
                   _image,
-                  fit: BoxFit.fill,
+                  fit: BoxFit.cover,
                 )
                     : Image.network(
                   widget.user.profile_image != "noimage.jpg" ? NetworkUtils.host +
                       AuthUtils.profilePics +
                       widget.user.profile_image: AuthUtils.defaultProfileImg,
-                  fit: BoxFit.fill,
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
@@ -311,12 +321,13 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
   void setSchedule(String title, BuildContext context) async {
     if (title.isEmpty) {
       NetworkUtils.showSnackBar(_scaffoldKey, "Please set a title");
-    }  else if (selectedStartDate == ""){
+    } else if (selectedStartDate == "") {
       NetworkUtils.showSnackBar(_scaffoldKey, "Please set a start date");
-    }else if (selectedEndDate == ""){
+    } else if (selectedEndDate == "") {
       NetworkUtils.showSnackBar(_scaffoldKey, "Please set an end date");
-    }else if (selectedEndDate == ""){
-      NetworkUtils.showSnackBar(_scaffoldKey, "Please indicate your sechedule time");
+    } else if (selectedEndDate == "") {
+      NetworkUtils.showSnackBar(
+          _scaffoldKey, "Please indicate your sechedule time");
     } else {
       setState(() {
         _isLoading = true;
@@ -347,7 +358,7 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         jsonResponse = json.decode(response.body);
         if (jsonResponse != null) {
-          NetworkUtils.showRedToast('Awaiting API Scope');
+          NetworkUtils.showRedToast('An error ocurred!');
           setState(() {
             _isLoading = false;
           });
@@ -355,13 +366,60 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
         Navigator.pop(context);
         NetworkUtils.showToast("You have succesfully set a schedule with " +
             widget.user.first_name + " " + widget.user.last_name);
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-        NetworkUtils.showSnackBar(_scaffoldKey, "An error occured");
+        if (jsonResponse != null) {
+          await Firestore.instance
+              .collection('Tokens')
+              .document(widget.user.id.toString())
+              .get()
+              .then((DocumentSnapshot ds) {
+            tokenString = ds.data['token'].toString();
+            sendAndRetrieveMessage(tokenString, "New Schedule Request",
+                "You have a new schedule request from a mentor");
+            return ds.data['token'].toString();
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+          NetworkUtils.showSnackBar(_scaffoldKey, "An error occured");
+        }
       }
     }
   }
+  Future<Map<String, dynamic>> sendAndRetrieveMessage(String token, String title, String body) async {
+    await firebaseMessaging.requestNotificationPermissions(
+      const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: false),
+    );
+    await http.post(
+      'https://fcm.googleapis.com/fcm/send',
+      headers: <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'key = $serverToken',
+      },
+      body: jsonEncode(
+        <String, dynamic>{
+          'notification': <String, dynamic>{
+            'body': body,
+            'title': title
+          },
+          'priority': 'high',
+          'data': <String, dynamic>{
+            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            'id': '1',
+            'status': 'done'
+          },
+          'to': token,
+        },
+      ),
+    );
 
+    final Completer<Map<String, dynamic>> completer =
+    Completer<Map<String, dynamic>>();
+    firebaseMessaging.configure(
+      onMessage: (Map<String, dynamic> message) async {
+        completer.complete(message);
+      },
+    );
+    return completer.future;
+  }
 }

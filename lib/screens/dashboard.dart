@@ -34,8 +34,10 @@ class _DashBoardPageState extends State<DashBoardPage> with TickerProviderStateM
   bool isUpdateProfile = true;
   bool isAdminVerified = true;
   List<MentorIndex> mentorIndexes = [];
+  List<MentorIndex> acceptedMentorIndexes = [];
   SharedPreferences sharedPreferences;
   Iterable newList;
+  Iterable acceptedNewList;
   Iterable status;
   String names = "";
   Iterable indexIds;
@@ -229,7 +231,7 @@ class _DashBoardPageState extends State<DashBoardPage> with TickerProviderStateM
             controller: _tabController,
             children: [new HomePage(), new MenteePage(menteeIds: newList,
     indexIds: indexIds, names:names, sessionStatus: status, mentorId:id),
-              new SchedulePage()]);
+              new SchedulePage(menteeIds: acceptedNewList, mentorId:id)]);
         break;
       case 1:
         showTabs = false;
@@ -502,7 +504,11 @@ class _DashBoardPageState extends State<DashBoardPage> with TickerProviderStateM
             u["updated_at"]);
 
         mentorIndexes.add(user);
+        if(user.status == "1"){
+          acceptedMentorIndexes.add(user);
+        }
         setState((){
+          acceptedNewList =  acceptedMentorIndexes.map((MentorIndex) => MentorIndex.mentee_id);
           newList = mentorIndexes.map((MentorIndex) => MentorIndex.mentee_id);
           indexIds = mentorIndexes.map((MentorIndex) => MentorIndex.id);
           status = mentorIndexes.map((MentorIndex) => MentorIndex.status);

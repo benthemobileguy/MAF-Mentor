@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:emoji_picker/emoji_picker.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:maf_mentor/model/mentee.dart';
 import 'package:maf_mentor/model/message.dart';
@@ -20,11 +23,17 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   ProgressDialog pr;
+  Timer timer;
+  ScrollController _scrollController = new ScrollController();
+  String tokenString;
+  final String serverToken = "AAAA58t2zSA:APA91bFAUKteVAxPeVXArbXTUpXzk5mIceGTVDMGJGAStdB1avWev-"
+      "IYs6_ojymE6l5eGuXAPCyMl2rfqcXYCxQKqNg7l_2eWNESC6nHHs_7KGsuuSK7JO5gyWFCRSnMmhgiOdRiOeqF";
+  final FirebaseMessaging firebaseMessaging = FirebaseMessaging();
   Iterable menteeMsg;
-  List<Message> senderExchangedMessages = [];
-  List<Message> receiverExchangedMessages = [];
-  List<String> sentMessages = [];
-  List<String> receivedMessages = [];
+  List<Message> exchangedMessages = [];
+  List<String>  messages = [];
+  List<String> receiverId = [];
+  List<String> senderId = [];
   String typingText;
   bool isMsgSent = false;
   final _chatController = TextEditingController();
@@ -46,19 +55,22 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     isShowSticker = false;
-    fetchSentMessages();
-    fetchReceivedMessages();
+    fetchMessages();
+//    timer = Timer.periodic(Duration(seconds: 2),
+//            (Timer t) => fetchMessages());
   }
 
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
     _chatController.dispose();
+    timer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Timer(Duration(milliseconds: 1000), () => _scrollController.jumpTo(_scrollController.position.maxScrollExtent));
     //Dialog Style
     pr = new ProgressDialog(context, type: ProgressDialogType.Normal);
     pr.style(
@@ -75,7 +87,9 @@ class _ChatPageState extends State<ChatPage> {
     );
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
     double px = 1 / pixelRatio;
-    final chatList = ListView(
+    final chatList = Expanded(
+      child: ListView(
+        controller: _scrollController,
       shrinkWrap: true,
       padding: EdgeInsets.all(8.0),
       children: [
@@ -86,34 +100,87 @@ class _ChatPageState extends State<ChatPage> {
           child: Text('TODAY',
               textAlign: TextAlign.center, style: TextStyle(fontSize: 11.0)),
         ),
-        for (var i = 0; i < sentMessages.length; i++)
-          Row(
-            children: <Widget>[
-              Expanded(child: SizedBox()),
+        for (var i = 0; i < messages.length; i++)
+          senderId[i] != widget.mentorId.toString() ?
               Bubble(
                 nipWidth: 8,
                 nipHeight: 24,
+                color: Color.fromRGBO(225, 255, 199, 1.0),
                 margin: BubbleEdges.only(top: 5.0),
                 alignment: Alignment.topRight,
                 nip: BubbleNip.rightBottom,
-                child: Text(sentMessages[i]),
-              ),
-              SizedBox(
-                width: 8,
-              ),
-            ],
-          ),
-        for (var i = 0; i < receivedMessages.length; i++)
-          Bubble(
+                child: Text(messages[i]),
+
+          ): Bubble(
             nipWidth: 8,
             nipHeight: 24,
             margin: BubbleEdges.only(top: 5.0),
             alignment: Alignment.topLeft,
             nip: BubbleNip.leftTop,
-            child: Text(receivedMessages[i]),
+            child: Text(messages[i]),
           )
       ],
+      )
     );
+   final bottomBar = Align(
+        alignment: FractionalOffset.bottomCenter,
+        child: Row(
+          children: <Widget>[
+            Flexible(
+              child: new Row(
+                children: <Widget>[
+                  new Flexible(
+                      child: Theme(
+                        data: new ThemeData(
+                          primaryColor: Color(0XFF3B3B3C),
+                          primaryColorDark: Colors.red,
+                        ),
+                        child: new TextField(
+                          onChanged: (text) {
+                            setState(() {
+                              typingText = text;
+                            });
+                          },
+                          controller: _chatController,
+                          textAlign: TextAlign.start,
+                          decoration: new InputDecoration(
+                            hintText: 'Type your message',
+                            prefixIcon: new IconButton(
+                                icon: new Image.asset(
+                                  'assets/images/smile.png',
+                                  width: 26.0,
+                                  height: 26.0,
+                                ),
+                                onPressed: () => openEmoji()),
+                            suffixIcon: new IconButton(
+                                icon: new Image.asset(
+                                  'assets/images/send.png',
+                                  width: 26.0,
+                                  height: 26.0,
+                                ),
+                                onPressed: () => sendMessage()),
+                            hintStyle: TextStyle(
+                                fontSize: 14.0,
+                                fontFamily: 'Muli',
+                                color: Color(0xff5D697C)),
+                            border: new OutlineInputBorder(
+                              borderRadius: const BorderRadius.all(
+                                const Radius.circular(0.0),
+                              ),
+                              borderSide: new BorderSide(
+                                color: Colors.black,
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
     return WillPopScope(
       child: Scaffold(
           appBar: AppBar(
@@ -134,7 +201,7 @@ class _ChatPageState extends State<ChatPage> {
                         widget.user.profile_image != "noimage.jpg" ? NetworkUtils.host +
                             AuthUtils.profilePics +
                             widget.user.profile_image: AuthUtils.defaultProfileImg,
-                        fit: BoxFit.fill,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -163,67 +230,7 @@ class _ChatPageState extends State<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 chatList,
-                Flexible(
-                  child: Align(
-                    alignment: FractionalOffset.bottomCenter,
-                    child: Row(
-                      children: <Widget>[
-                        Flexible(
-                          child: new Row(
-                            children: <Widget>[
-                              new Flexible(
-                                  child: Theme(
-                                data: new ThemeData(
-                                  primaryColor: Color(0XFF3B3B3C),
-                                  primaryColorDark: Colors.red,
-                                ),
-                                child: new TextField(
-                                  onChanged: (text) {
-                                    setState(() {
-                                      typingText = text;
-                                    });
-                                  },
-                                  controller: _chatController,
-                                  textAlign: TextAlign.start,
-                                  decoration: new InputDecoration(
-                                    hintText: 'Type your message',
-                                    prefixIcon: new IconButton(
-                                        icon: new Image.asset(
-                                          'assets/images/smile.png',
-                                          width: 26.0,
-                                          height: 26.0,
-                                        ),
-                                        onPressed: () => openEmoji()),
-                                    suffixIcon: new IconButton(
-                                        icon: new Image.asset(
-                                          'assets/images/send.png',
-                                          width: 26.0,
-                                          height: 26.0,
-                                        ),
-                                        onPressed: () => sendMessage()),
-                                    hintStyle: TextStyle(
-                                        fontSize: 14.0,
-                                        fontFamily: 'Muli',
-                                        color: Color(0xff5D697C)),
-                                    border: new OutlineInputBorder(
-                                      borderRadius: const BorderRadius.all(
-                                        const Radius.circular(0.0),
-                                      ),
-                                      borderSide: new BorderSide(
-                                        color: Colors.black,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                bottomBar,
                 // Sticker
                 (isShowSticker ? buildSticker() : Container()),
               ])),
@@ -235,7 +242,8 @@ class _ChatPageState extends State<ChatPage> {
     if (_chatController.text != "") {
       FocusScope.of(context).requestFocus(new FocusNode());
       setState(() {
-        sentMessages.add(_chatController.text);
+        senderId.add(widget.mentorId.toString());
+        messages.add(_chatController.text);
         postMessageToApi(_chatController.text);
       });
       _chatController.clear();
@@ -270,7 +278,6 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void postMessageToApi(String text) async {
-    print(widget.user.id.toString());
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     Map data = {"message": text};
     var jsonResponse = null;
@@ -289,11 +296,21 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         isMsgSent = true;
       });
+      //send notification
+      await Firestore.instance
+          .collection('Tokens')
+          .document(widget.user.id.toString())
+          .get()
+          .then((DocumentSnapshot ds) {
+        tokenString = ds.data['token'].toString();
+        sendAndRetrieveMessage(tokenString, widget.user.first_name + " "
+            + widget.user.last_name, text);
+        return ds.data['token'].toString();
+      });
     }
   }
 
-  Future fetchSentMessages() async {
-    //Future.delayed(Duration.zero, () => pr.show());
+  Future fetchMessages() async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     var uri =
         NetworkUtils.host + AuthUtils.sendMessage + widget.user.id.toString();
@@ -307,17 +324,14 @@ class _ChatPageState extends State<ChatPage> {
         },
       );
       final responseJson = json.decode(response.body);
-      if (responseJson != null) {
-//        setState(() {
-//          Future.delayed(Duration.zero, () => pr.hide());
-//        });
-      }
       for (var u in responseJson) {
         Message message = Message(u["id"], u["sender_id"], u["receiver_id"],
             u["body"], u["read"], u["created_at"], u["updated_at"]);
-        senderExchangedMessages.add(message);
+        exchangedMessages.add(message);
         setState(() {
-          sentMessages.add(message.body);
+          messages.add(message.body);
+          senderId.add(message.sender_id.toString());
+          receiverId.add(message.receiver_id.toString());
         });
       }
       return responseJson;
@@ -326,32 +340,41 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future fetchReceivedMessages() async {
-   // Future.delayed(Duration.zero, () => pr.show());
-    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    var uri =
-        NetworkUtils.host + AuthUtils.sendMessage + widget.mentorId.toString();
-    try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + sharedPreferences.get("token"),
+
+  Future<Map<String, dynamic>> sendAndRetrieveMessage(String token, String title, String body) async {
+    await firebaseMessaging.requestNotificationPermissions(
+      const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: false),
+    );
+    await http.post(
+      'https://fcm.googleapis.com/fcm/send',
+      headers: <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'key = $serverToken',
+      },
+      body: jsonEncode(
+        <String, dynamic>{
+          'notification': <String, dynamic>{
+            'body': body,
+            'title': title
+          },
+          'priority': 'high',
+          'data': <String, dynamic>{
+            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            'id': '1',
+            'status': 'done'
+          },
+          'to': token,
         },
-      );
-      final responseJson = json.decode(response.body);
-      for (var u in responseJson) {
-        Message message = Message(u["id"], u["sender_id"], u["receiver_id"],
-            u["body"], u["read"], u["created_at"], u["updated_at"]);
-        receiverExchangedMessages.add(message);
-        setState(() {
-          receivedMessages.add(message.body);
-        });
-      }
-      return responseJson;
-    } catch (exception) {
-      print(exception);
-    }
+      ),
+    );
+
+    final Completer<Map<String, dynamic>> completer =
+    Completer<Map<String, dynamic>>();
+    firebaseMessaging.configure(
+      onMessage: (Map<String, dynamic> message) async {
+        completer.complete(message);
+      },
+    );
+    return completer.future;
   }
 }

@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:emoji_picker/emoji_picker.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:maf_mentor/model/mentee.dart';
 import 'package:maf_mentor/model/message.dart';
@@ -26,9 +24,6 @@ class _ChatPageState extends State<ChatPage> {
   Timer timer;
   ScrollController _scrollController = new ScrollController();
   String tokenString;
-  final String serverToken = "AAAA58t2zSA:APA91bFAUKteVAxPeVXArbXTUpXzk5mIceGTVDMGJGAStdB1avWev-"
-      "IYs6_ojymE6l5eGuXAPCyMl2rfqcXYCxQKqNg7l_2eWNESC6nHHs_7KGsuuSK7JO5gyWFCRSnMmhgiOdRiOeqF";
-  final FirebaseMessaging firebaseMessaging = FirebaseMessaging();
   Iterable menteeMsg;
   List<Message> exchangedMessages = [];
   List<String>  messages = [];
@@ -38,7 +33,7 @@ class _ChatPageState extends State<ChatPage> {
   bool isMsgSent = false;
   final _chatController = TextEditingController();
   bool isShowSticker;
-
+  Map _latestMessage;
   Future<bool> onBackPress() {
     if (isShowSticker) {
       setState(() {
@@ -55,9 +50,8 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     isShowSticker = false;
-    fetchMessages();
-//    timer = Timer.periodic(Duration(seconds: 2),
-//            (Timer t) => fetchMessages());
+    timer = Timer.periodic(Duration(seconds: 15),
+            (Timer t) =>  fetchMessages());
   }
 
   @override
@@ -242,8 +236,6 @@ class _ChatPageState extends State<ChatPage> {
     if (_chatController.text != "") {
       FocusScope.of(context).requestFocus(new FocusNode());
       setState(() {
-        senderId.add(widget.mentorId.toString());
-        messages.add(_chatController.text);
         postMessageToApi(_chatController.text);
       });
       _chatController.clear();
@@ -296,17 +288,10 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         isMsgSent = true;
       });
+      fetchMessages();
       //send notification
-      await Firestore.instance
-          .collection('Tokens')
-          .document(widget.user.id.toString())
-          .get()
-          .then((DocumentSnapshot ds) {
-        tokenString = ds.data['token'].toString();
-        sendAndRetrieveMessage(tokenString, widget.user.first_name + " "
-            + widget.user.last_name, text);
-        return ds.data['token'].toString();
-      });
+      sendNotification(widget.user.id, widget.user.first_name + " "
+          + widget.user.last_name, text);
     }
   }
 
@@ -339,42 +324,25 @@ class _ChatPageState extends State<ChatPage> {
       print(exception);
     }
   }
-
-
-  Future<Map<String, dynamic>> sendAndRetrieveMessage(String token, String title, String body) async {
-    await firebaseMessaging.requestNotificationPermissions(
-      const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: false),
-    );
-    await http.post(
-      'https://fcm.googleapis.com/fcm/send',
-      headers: <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'key = $serverToken',
-      },
-      body: jsonEncode(
-        <String, dynamic>{
-          'notification': <String, dynamic>{
-            'body': body,
-            'title': title
-          },
-          'priority': 'high',
-          'data': <String, dynamic>{
-            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-            'id': '1',
-            'status': 'done'
-          },
-          'to': token,
-        },
-      ),
-    );
-
-    final Completer<Map<String, dynamic>> completer =
-    Completer<Map<String, dynamic>>();
-    firebaseMessaging.configure(
-      onMessage: (Map<String, dynamic> message) async {
-        completer.complete(message);
-      },
-    );
-    return completer.future;
+  void sendNotification(int id, String title, String body) async{
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var uri = NetworkUtils.host + AuthUtils.pushNotification;
+    var jsonResponse = null;
+    var response = await http.post(uri,
+        body: jsonEncode({
+          "receivers_id": id,
+          "title": title,
+          "body": body
+        }),
+        headers: {'Authorization': 'Bearer ' + sharedPreferences.get("token"),
+          'Accept': 'application/json',
+          'Content-Type' : 'application/json'} );
+    jsonResponse = response.body;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("success " + jsonResponse.toString());
+    } else {
+      print("Failed" +jsonResponse.toString());
+    }
   }
+
 }

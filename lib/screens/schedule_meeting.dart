@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
@@ -25,9 +24,8 @@ class ScheduleMeeting extends StatefulWidget {
 }
 
 class _ScheduleMeetingState extends State<ScheduleMeeting> {
-  final FirebaseMessaging firebaseMessaging = FirebaseMessaging();
-  final String serverToken = "AAAA58t2zSA:APA91bFAUKteVAxPeVXArbXTUpXzk5mIceGTVDMGJGAStdB1avWev-IYs6_ojymE6l5eGuXAPCyMl2rfqcXYCxQKqNg7l_2eWNESC6nHHs_7KGsuuSK7JO5gyWFCRSnMmhgiOdRiOeqF";
   String selectedStartDate = "";
+  var timeFormat = DateFormat('HH:mm');
   String selectedEndDate = "";
   int startMillis;
   String tokenString;
@@ -205,8 +203,7 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
             setState(() {
               selectedStartDate = date.toString();
               startMillis = date.millisecondsSinceEpoch;
-              selectedTime = time.hour.toString() + ":" + time.minute.toString();
-
+              selectedTime = '${timeFormat.format(date)}';
             });
             return DateTimeField.combine(date, time);
           } else {
@@ -354,72 +351,45 @@ class _ScheduleMeetingState extends State<ScheduleMeeting> {
           },
           body: finalData
       );
+      jsonResponse = response.body;
       print(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         jsonResponse = json.decode(response.body);
-        if (jsonResponse != null) {
-          NetworkUtils.showRedToast('An error ocurred!');
-          setState(() {
-            _isLoading = false;
-          });
-        }
         Navigator.pop(context);
         NetworkUtils.showToast("You have succesfully set a schedule with " +
             widget.user.first_name + " " + widget.user.last_name);
-        if (jsonResponse != null) {
-          await Firestore.instance
-              .collection('Tokens')
-              .document(widget.user.id.toString())
-              .get()
-              .then((DocumentSnapshot ds) {
-            tokenString = ds.data['token'].toString();
-            sendAndRetrieveMessage(tokenString, "New Schedule Request",
-                "You have a new schedule request from a mentor");
-            return ds.data['token'].toString();
-          });
-        } else {
-          setState(() {
-            _isLoading = false;
-          });
-          NetworkUtils.showSnackBar(_scaffoldKey, "An error occured");
-        }
+          sendNotification(widget.user.id, "New Schedule Request",
+              "You have a new schedule request from a mentor");
+      } else{
+        NetworkUtils.showRedToast('An error ocurred!');
+        print(selectedTime);
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
-  Future<Map<String, dynamic>> sendAndRetrieveMessage(String token, String title, String body) async {
-    await firebaseMessaging.requestNotificationPermissions(
-      const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: false),
-    );
-    await http.post(
-      'https://fcm.googleapis.com/fcm/send',
-      headers: <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'key = $serverToken',
-      },
-      body: jsonEncode(
-        <String, dynamic>{
-          'notification': <String, dynamic>{
-            'body': body,
-            'title': title
-          },
-          'priority': 'high',
-          'data': <String, dynamic>{
-            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-            'id': '1',
-            'status': 'done'
-          },
-          'to': token,
-        },
-      ),
-    );
 
-    final Completer<Map<String, dynamic>> completer =
-    Completer<Map<String, dynamic>>();
-    firebaseMessaging.configure(
-      onMessage: (Map<String, dynamic> message) async {
-        completer.complete(message);
-      },
-    );
-    return completer.future;
+  void sendNotification(int id, String title, String body) async{
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var uri = NetworkUtils.host + AuthUtils.pushNotification;
+    var jsonResponse = null;
+    var response = await http.post(uri,
+        body: jsonEncode({
+          "receivers_id": id,
+          "title": title,
+          "body": body
+        }),
+        headers: {'Authorization': 'Bearer ' + sharedPreferences.get("token"),
+          'Accept': 'application/json',
+          'Content-Type' : 'application/json'} );
+    jsonResponse = response.body;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("success " + jsonResponse.toString());
+    } else {
+      print("Failed" +jsonResponse.toString());
+    }
   }
+
+
 }

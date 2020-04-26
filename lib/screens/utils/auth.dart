@@ -16,6 +16,9 @@ class AuthUtils {
   static final String endPointProfile = '/api/v1/user';
   static final String chatConnections = '/api/v1/connections/';
   static final String sendMessage = '/api/v1/messages/';
+  static final String pushNotification = '/api/v1/notify/push';
+  static final String getNotifications = '/api/v1/notify/get';
+  static final String sendToken = '/api/v1/notify/save/token';
   static final String endPointSession = '/api/v1/mentoring-board/session/';
   static final String endPointUpdateProfile = '/api/v1/onboard';
   // Keys to store and fetch data from SharedPreferences

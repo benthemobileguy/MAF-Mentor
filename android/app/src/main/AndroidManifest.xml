@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.miraclecentre.bnotion.ben.maf_mentor">
+    package="com.bnotion.ben.maf_mentor">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <!-- io.flutter.app.FlutterApplication is an android.app.Application that

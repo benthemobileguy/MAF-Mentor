@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
@@ -36,8 +34,6 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   List<MentorIndex> mentorIndexes = [];
   Color colorDynamic;
-  final String serverToken = "AAAA58t2zSA:APA91bFAUKteVAxPeVXArbXTUpXzk5mIceGTVDMGJGAStdB1avWev-IYs6_ojymE6l5eGuXAPCyMl2rfqcXYCxQKqNg7l_2eWNESC6nHHs_7KGsuuSK7JO5gyWFCRSnMmhgiOdRiOeqF";
-  final FirebaseMessaging firebaseMessaging = FirebaseMessaging();
   String strText;
   ProgressDialog pr;
   Iterable statusRetrieve;
@@ -427,22 +423,9 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
       jsonResponse = json.decode(response.body);
      pr.hide();
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if(jsonResponse!=null){
-          await Firestore.instance
-              .collection('Tokens')
-              .document(widget.menteeIds.elementAt(widget.index).toString())
-              .get()
-              .then((DocumentSnapshot ds) {
-            tokenString = ds.data['token'].toString();
-            sendAndRetrieveMessage(tokenString, "Request Accepted", "A mentor just accepted your connection request");
-            return ds.data['token'].toString();
-
-          });
-          NetworkUtils.showToast("Mentee request accepted");
-       setState(() {
-         widget.status = "1";
-       });
-        }
+        //send notification
+        sendNotification(widget.user.id,  "Request Accepted", "A mentor just accepted your connection request");
+        NetworkUtils.showToast("Mentee request accepted");
       } else if(response.statusCode == 404){
         NetworkUtils.showSnackBar(_scaffoldKey, "The requested resource does no longer exist");
       }
@@ -470,21 +453,11 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
     jsonResponse = json.decode(response.body);
     pr.hide();
     if (response.statusCode == 200 || response.statusCode == 201) {
-      if(jsonResponse!=null){
-        await Firestore.instance
-            .collection('Tokens')
-            .document(widget.menteeIds.elementAt(widget.index).toString())
-            .get()
-            .then((DocumentSnapshot ds) {
-          tokenString = ds.data['token'].toString();
-          sendAndRetrieveMessage(tokenString, "Request Declined", "Your connection request was declined by a mentor");
-          return ds.data['token'].toString();
-
-        });
+      //send notification
+      sendNotification(widget.user.id,  "Request Declined", "Your connection request was declined by a mentor");
         NetworkUtils.showRedToast("Mentee request declined");
         Navigator.pop(context);
         print(jsonResponse.toString());
-      }
     } else if(response.statusCode == 404){
       NetworkUtils.showSnackBar(_scaffoldKey, "The requested resource does no longer exist");
     }
@@ -501,7 +474,8 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
     try {
       final response = await http.get(
         uri,
-        headers: {'Accept': 'application/json', 'Content-Type': 'application/json','Authorization': 'Bearer ' + sharedPreferences.get("token"), },
+        headers: {'Accept': 'application/json', 'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + sharedPreferences.get("token"), },
       );
       final responseJson = json.decode(response.body);
       for (var u in responseJson["data"]) {
@@ -539,41 +513,25 @@ class _MenteeDetailPageState extends State<MenteeDetailPage> {
     }
   }
 
-  Future<Map<String, dynamic>> sendAndRetrieveMessage(String token, String title, String body) async {
-    await firebaseMessaging.requestNotificationPermissions(
-      const IosNotificationSettings(sound: true, badge: true, alert: true, provisional: false),
-    );
-    await http.post(
-      'https://fcm.googleapis.com/fcm/send',
-      headers: <String, String>{
-        'Content-Type': 'application/json',
-        'Authorization': 'key = $serverToken',
-      },
-      body: jsonEncode(
-        <String, dynamic>{
-          'notification': <String, dynamic>{
-            'body': body,
-            'title': title
-          },
-          'priority': 'high',
-          'data': <String, dynamic>{
-            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-            'id': '1',
-            'status': 'done'
-          },
-          'to': token,
-        },
-      ),
-    );
-
-    final Completer<Map<String, dynamic>> completer =
-    Completer<Map<String, dynamic>>();
-    firebaseMessaging.configure(
-      onMessage: (Map<String, dynamic> message) async {
-        completer.complete(message);
-      },
-    );
-    return completer.future;
+  void sendNotification(int id, String title, String body) async{
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var uri = NetworkUtils.host + AuthUtils.pushNotification;
+    var jsonResponse = null;
+    var response = await http.post(uri,
+        body: jsonEncode({
+          "receivers_id": id,
+          "title": title,
+          "body": body
+        }),
+        headers: {'Authorization': 'Bearer ' + sharedPreferences.get("token"),
+          'Accept': 'application/json',
+          'Content-Type' : 'application/json'} );
+    jsonResponse = response.body;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("success " + jsonResponse.toString());
+    } else {
+      print("Failed" +jsonResponse.toString());
+    }
   }
 }
 

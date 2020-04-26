@@ -84,7 +84,7 @@ class _SchedulePageState extends State<SchedulePage> {
             ),
           );
         } else {
-          return Flexible(
+          return Expanded(
             child: ListView.builder(
               itemCount: scheduleList.length,
               itemBuilder: (BuildContext context, int index) {
@@ -161,7 +161,7 @@ class _SchedulePageState extends State<SchedulePage> {
       backgroundColor: Colors.white,
       body: Padding(
         padding: const EdgeInsets.only(
-            left: 16.0, right: 16.0, top: 30.0, bottom: 30.0),
+            left: 16.0, right: 16.0, top: 10.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -301,65 +301,88 @@ class _SchedulePageState extends State<SchedulePage> {
                 topLeft: Radius.circular(30.0),
                 topRight: Radius.circular(30.0))),
         builder: (context) {
-          return FutureBuilder(
-              future: Future.delayed(Duration(seconds: 1), () => 1),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return Container(
-                    child: CircularProgressIndicator(),
-                    alignment: FractionalOffset.center,
-                  );
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(top: 30.0, left: 12.0, right: 12.0),
-                  child: ListView.separated(
-                    separatorBuilder: (BuildContext context, int index) => Divider(
-                      color: Color(0xFF041F36),
-                    ),
-                    itemCount: menteeUsers.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      return ListTile(
-                        leading: CircleAvatar(
-                          maxRadius: 23,
-                          backgroundImage: NetworkImage(NetworkUtils.host +
-                              AuthUtils.profilePics +
-                              menteeUsers[index].profile_image),
+          return Column(
+            children: <Widget>[
+              SizedBox(
+                height: 30.0,
+              ),
+              Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                     "Your Mentees",
+                      style: TextStyle(
+                        color: Color(0xFF041F36),
+                        fontFamily: 'Muli',
+                        fontSize: 14.5,
+                      )),
+                ),
+              ),
+
+              Expanded(
+                child: FutureBuilder(
+                    future: Future.delayed(Duration(seconds: 1), () => 1),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return Container(
+                          child: CircularProgressIndicator(),
+                          alignment: FractionalOffset.center,
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10.0, left: 12.0, right: 12.0),
+                        child: ListView.separated(
+                          separatorBuilder: (BuildContext context, int index) => Divider(
+                            color: Color(0xFF041F36),
+                          ),
+                          itemCount: menteeUsers.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return ListTile(
+                              leading: CircleAvatar(
+                                maxRadius: 23,
+                                backgroundImage: NetworkImage(NetworkUtils.host +
+                                    AuthUtils.profilePics +
+                                    menteeUsers[index].profile_image),
+                              ),
+                              title: Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                    menteeUsers[index].first_name + " " + users[index].last_name,
+                                    style: TextStyle(
+                                      color: Color(0xFF041F36),
+                                      fontFamily: 'Muli',
+                                      fontSize: 16.0,
+                                    )),
+                              ),
+                              subtitle: Text(
+                                  menteeUsers[index].industry,
+                                  style: TextStyle(
+                                    color: Color(0xFF041F36),
+                                    fontFamily: 'MuliItalic',
+                                    fontSize: 12.5,
+                                  )),
+                              trailing: Text(capitalize(menteeUsers[index].country),
+                                  style: TextStyle(
+                                    color: Color(0xFF25282A),
+                                    fontFamily: 'MuliItalic',
+                                    fontSize: 12.0,
+                                  )),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                    context, SlideFromRightPageRoute(widget:
+                                ScheduleMeeting(menteeUsers[index], menteeUsers[index].first_name +
+                                    " " + menteeUsers[index].last_name, widget.mentorId)));
+                              },
+                            );
+                          },
                         ),
-                        title: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                              menteeUsers[index].first_name + " " + users[index].last_name,
-                              style: TextStyle(
-                                color: Color(0xFF041F36),
-                                fontFamily: 'Muli',
-                                fontSize: 16.0,
-                              )),
-                        ),
-                        subtitle: Text(
-                            menteeUsers[index].industry,
-                            style: TextStyle(
-                              color: Color(0xFF041F36),
-                              fontFamily: 'MuliItalic',
-                              fontSize: 12.5,
-                            )),
-                        trailing: Text(capitalize(menteeUsers[index].country),
-                            style: TextStyle(
-                              color: Color(0xFF25282A),
-                              fontFamily: 'MuliItalic',
-                              fontSize: 12.0,
-                            )),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                              context, SlideFromRightPageRoute(widget:
-                          ScheduleMeeting(menteeUsers[index], menteeUsers[index].first_name +
-                              " " + menteeUsers[index].last_name, widget.mentorId)));
-                        },
                       );
-                    },
-                  ),
-                );
-              });
+                    }),
+              ),
+            ],
+          );
         });
   }
 
